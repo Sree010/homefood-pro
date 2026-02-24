@@ -27,6 +27,10 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [tempImage, setTempImage] = useState(null);
   
+  // --- NEW STATES FOR SIGNUP ---
+  const [isSignup, setIsSignup] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState(getSavedData('registeredUsers', []));
+
   // Admin notification state
   const [adminNotify, setAdminNotify] = useState(false);
 
@@ -43,7 +47,6 @@ export default function App() {
     const handleStorageUpdate = (e) => {
       if (e.key === 'orderHistory' && role === 'admin') {
         setAdminNotify(true);
-        // BETTER NOTIFICATION SOUND (Digital Alert Tone)
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.play().catch(err => console.log("Audio play failed:", err));
       }
@@ -59,10 +62,11 @@ export default function App() {
       localStorage.setItem('orderHistory', JSON.stringify(orderHistory));
       localStorage.setItem('isLoggedIn', JSON.stringify(isLoggedIn));
       localStorage.setItem('role', JSON.stringify(role));
+      localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
     } catch (error) {
       console.error("Storage limit reached", error);
     }
-  }, [menu, orderHistory, isLoggedIn, role]);
+  }, [menu, orderHistory, isLoggedIn, role, registeredUsers]);
 
   // --- IMAGE HANDLING ---
   const handleImageChange = (e) => {
@@ -115,7 +119,6 @@ export default function App() {
       date: new Date().toLocaleString() 
     };
     
-    // User confirmation sound
     new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => {});
     
     const updatedHistory = [newOrder, ...orderHistory];
@@ -141,25 +144,49 @@ export default function App() {
 
   if (!isLoggedIn) return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: "#0f172a", fontFamily: 'sans-serif' }}>
-      <div style={{ background: 'white', padding: '40px', borderRadius: '30px', textAlign: 'center', width: '320px' }}>
+      <div style={{ background: 'white', padding: '40px', borderRadius: '30px', textAlign: 'center', width: '320px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
         <h2 style={{ fontWeight: 900 }}>HOMEFOOD <span style={{ color: '#f43f5e' }}>PRO</span></h2>
+        <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '15px' }}>{isSignup ? "Create an Account" : "Please Login"}</p>
         <form 
           onSubmit={(e) => { 
             e.preventDefault(); 
             const u = e.target.u.value;
             const p = e.target.p.value;
-            if ((u === "admin" && p === "1234") || (u === "user" && p === "user")) {
-              setRole(u); setIsLoggedIn(true);
-            } else { 
-              alert("Wrong Credentials!"); 
+            
+            if (isSignup) {
+              const existing = registeredUsers.find(user => user.username === u);
+              if (existing) return alert("Username already taken!");
+              const newUser = { username: u, password: p, role: 'user' };
+              setRegisteredUsers([...registeredUsers, newUser]);
+              alert("Signup successful! Please Login.");
+              setIsSignup(false);
+            } else {
+              if ((u === "admin" && p === "1234")) {
+                setRole("admin"); setIsLoggedIn(true);
+              } else {
+                const userMatch = registeredUsers.find(user => user.username === u && user.password === p);
+                if (userMatch) {
+                  setRole(userMatch.role); setIsLoggedIn(true);
+                } else {
+                  alert("Wrong Credentials!");
+                }
+              }
             }
           }} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: 20 }}
+          style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: 10 }}
         >
           <input name="u" placeholder="Username" required style={{ padding: 14, borderRadius: 12, border: '1px solid #ddd' }} />
           <input name="p" type="password" placeholder="Password" required style={{ padding: 14, borderRadius: 12, border: '1px solid #ddd' }} />
-          <button style={{ padding: 14, background: '#f43f5e', color: 'white', borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer' }}>Login</button>
+          <button style={{ padding: 14, background: '#f43f5e', color: 'white', borderRadius: 12, border: 'none', fontWeight: 800, cursor: 'pointer' }}>
+            {isSignup ? "Sign Up" : "Login"}
+          </button>
         </form>
+        <p 
+          onClick={() => setIsSignup(!isSignup)} 
+          style={{ marginTop: 20, fontSize: 13, color: '#f43f5e', fontWeight: 800, cursor: 'pointer' }}
+        >
+          {isSignup ? "Already have an account? Login" : "Don't have an account? Sign Up"}
+        </p>
       </div>
     </div>
   );
@@ -171,7 +198,7 @@ export default function App() {
         <h2 style={{ fontWeight: 900, margin: 0 }}>HOMEFOOD <span style={{ color: '#f43f5e' }}>{role.toUpperCase()}</span></h2>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={() => setShowHistory(true)} style={{ padding: 10, borderRadius: 12, border: 'none', background: '#f1f5f9', cursor: 'pointer' }}><History size={20} /></button>
-          <button onClick={() => { setIsLoggedIn(false); localStorage.clear(); window.location.reload(); }} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: '#fff1f2', color: '#f43f5e', fontWeight: 800, cursor: 'pointer' }}>Logout</button>
+          <button onClick={() => { setIsLoggedIn(false); localStorage.setItem('isLoggedIn', false); window.location.reload(); }} style={{ padding: '10px 20px', borderRadius: 12, border: 'none', background: '#fff1f2', color: '#f43f5e', fontWeight: 800, cursor: 'pointer' }}>Logout</button>
         </div>
       </nav>
 
